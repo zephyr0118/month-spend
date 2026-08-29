@@ -183,7 +183,10 @@ if ($null -eq $adbCommand) {
 }
 
 if ($null -ne $adbCommand) {
-    $deviceLines = @(& $adbCommand.Source devices 2>$null)
+    $adbPath = $adbCommand.Path
+    if ([string]::IsNullOrWhiteSpace($adbPath)) { $adbPath = $adbCommand.Source }
+
+    $deviceLines = @(& $adbPath devices 2>$null)
     $devices = @()
 
     foreach ($line in $deviceLines) {
@@ -196,7 +199,7 @@ if ($null -ne $adbCommand) {
     if ($devices.Count -eq 1) {
         Write-Host ('ADB device: ' + $devices[0])
         Write-Host 'Installing with adb install -r ...'
-        & $adbCommand.Source '-s' $devices[0] 'install' '-r' $distApk
+        & $adbPath '-s' $devices[0] 'install' '-r' $distApk
 
         if ($LASTEXITCODE -eq 0) {
             Write-Host 'ADB overwrite install succeeded.' -ForegroundColor Green
@@ -227,11 +230,12 @@ $listener = $null
 $port = 8765
 while (($port -le 8785) -and ($null -eq $listener)) {
     try {
-        $candidate = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Any, $port)
+        $candidate = New-Object -TypeName System.Net.Sockets.TcpListener -ArgumentList @([System.Net.IPAddress]::Any, [int]$port)
         $candidate.Start()
         $listener = $candidate
     }
-    catch [System.Net.Sockets.SocketException] {
+    catch {
+        $listener = $null
         $port++
     }
 }
@@ -284,7 +288,7 @@ try {
         $client = $listener.AcceptTcpClient()
         try {
             $stream = $client.GetStream()
-            $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::ASCII, $false, 1024, $true)
+            $reader = New-Object -TypeName System.IO.StreamReader -ArgumentList @($stream, [System.Text.Encoding]::ASCII, $false, 1024, $true)
             $requestLine = $reader.ReadLine()
 
             if ([string]::IsNullOrWhiteSpace($requestLine)) {
