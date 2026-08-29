@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">月迹</string>
+    <string name="notification_channel_reminders">财务提醒</string>
+    <string name="notification_channel_description">记账、预算和复盘提醒</string>
+</resources>

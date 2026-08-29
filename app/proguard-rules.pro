@@ -1,0 +1,2 @@
+-keep class com.yueji.finance.core.database.** { *; }
+-keepattributes *Annotation*
