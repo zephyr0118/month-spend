@@ -1,3 +1,7 @@
+param(
+    [switch]$CleanBuild
+)
+
 $ErrorActionPreference = 'Stop'
 
 function Write-Section {
@@ -129,11 +133,24 @@ if (-not (Test-Path -LiteralPath $gradle)) {
 }
 
 Write-Section 'Step 1/3 - Build latest Daily APK'
-Write-Host 'Running :app:clean :app:assembleDaily ...'
+if ($CleanBuild) {
+    Write-Host 'Build mode: FULL CLEAN BUILD' -ForegroundColor Yellow
+    Write-Host 'Running :app:clean :app:assembleDaily ...'
+}
+else {
+    Write-Host 'Build mode: FAST INCREMENTAL BUILD' -ForegroundColor Green
+    Write-Host 'Running :app:assembleDaily ...'
+}
 
 Push-Location $repoRoot
 try {
-    & $gradle ':app:clean' ':app:assembleDaily'
+    if ($CleanBuild) {
+        & $gradle ':app:clean' ':app:assembleDaily'
+    }
+    else {
+        & $gradle ':app:assembleDaily'
+    }
+
     if ($LASTEXITCODE -ne 0) {
         throw ('Gradle failed with exit code ' + $LASTEXITCODE)
     }
