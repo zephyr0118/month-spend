@@ -8,5 +8,6 @@ captures/
 .externalNativeBuild/
 .cxx/
 app/release/
+dist/
 *.jks
 *.keystore
