@@ -17,9 +17,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yueji.finance.core.database.*
 import com.yueji.finance.core.model.*
@@ -330,45 +337,87 @@ private fun MerchantAutocomplete(
     onSelect: (MerchantEntity) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded && suggestions.isNotEmpty(),
-        onExpandedChange = {
-            expanded = it
-            if (it) onQuery(value)
-        },
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {
-                onValueChange(it)
-                onQuery(it)
-                expanded = true
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val menuWidth = maxWidth
+        ExposedDropdownMenuBox(
+            expanded = expanded && suggestions.isNotEmpty(),
+            onExpandedChange = {
+                expanded = it
+                if (it) onQuery(value)
             },
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
-            label = { Text(if (income) "收入来源" else "商户 / 支出去向") },
-            placeholder = { Text(if (income) "例如：公司工资、奖金、兼职" else "例如：盒马、房东、滴滴") },
-            supportingText = { Text(if (income) "输入关键字可选择历史收入来源" else "输入关键字可模糊查找历史商户") },
-            leadingIcon = { Icon(if (income) Icons.Default.Work else Icons.Default.Storefront, null) },
-            trailingIcon = { if (suggestions.isNotEmpty()) ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            singleLine = true,
-        )
-        ExposedDropdownMenu(expanded = expanded && suggestions.isNotEmpty(), onDismissRequest = { expanded = false }) {
-            suggestions.forEach { merchant ->
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(merchant.displayName)
-                            Text("历史使用 ${merchant.useCount} 次", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = {
+                    onValueChange(it)
+                    onQuery(it)
+                    expanded = true
+                },
+                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                label = { Text(if (income) "收入来源" else "商户 / 支出去向") },
+                placeholder = { Text(if (income) "例如：公司工资、奖金、兼职" else "例如：盒马、房东、滴滴") },
+                supportingText = { Text(if (income) "输入关键字可选择历史收入来源" else "输入关键字可模糊查找历史商户") },
+                leadingIcon = { Icon(if (income) Icons.Default.Work else Icons.Default.Storefront, null) },
+                trailingIcon = { if (suggestions.isNotEmpty()) ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                singleLine = true,
+            )
+            if (expanded && suggestions.isNotEmpty()) {
+                Popup(
+                    popupPositionProvider = UpwardDropdownPositionProvider,
+                    onDismissRequest = { expanded = false },
+                    properties = PopupProperties(
+                        focusable = false,
+                        dismissOnClickOutside = true,
+                        clippingEnabled = true,
+                    ),
+                ) {
+                    Surface(
+                        modifier = Modifier.width(menuWidth).heightIn(max = 240.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 3.dp,
+                        shadowElevation = 8.dp,
+                    ) {
+                        Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
+                            suggestions.forEach { merchant ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(merchant.displayName)
+                                            Text("历史使用 ${merchant.useCount} 次", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelect(merchant)
+                                        expanded = false
+                                    },
+                                    leadingIcon = { Icon(if (income) Icons.Default.Work else Icons.Default.History, null) },
+                                )
+                            }
                         }
-                    },
-                    onClick = {
-                        onSelect(merchant)
-                        expanded = false
-                    },
-                    leadingIcon = { Icon(if (income) Icons.Default.Work else Icons.Default.History, null) },
-                )
+                    }
+                }
             }
         }
+    }
+}
+
+private object UpwardDropdownPositionProvider : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset {
+        val preferredX = when (layoutDirection) {
+            LayoutDirection.Ltr -> anchorBounds.left
+            LayoutDirection.Rtl -> anchorBounds.right - popupContentSize.width
+        }
+        val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+        val x = preferredX.coerceIn(0, maxX)
+        val y = (anchorBounds.top - popupContentSize.height - 8).coerceAtLeast(0)
+        return IntOffset(x, y)
     }
 }
 
