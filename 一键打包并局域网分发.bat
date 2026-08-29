@@ -1,15 +1,23 @@
 @echo off
-chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
+set "SCRIPT=%~dp0tools\build-lan.ps1"
 
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\build-lan.ps1"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile($env:SCRIPT,[ref]$tokens,[ref]$errors) | Out-Null; if($errors.Count -gt 0){ Write-Host 'PowerShell syntax check failed:' -ForegroundColor Red; $errors | ForEach-Object { Write-Host ('Line ' + $_.Extent.StartLineNumber + ': ' + $_.Message) -ForegroundColor Red }; exit 1 }"
+if errorlevel 1 (
+    echo.
+    echo PowerShell syntax check failed. Please update the repository and try again.
+    pause
+    exit /b 1
+)
+
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"
 set "EXIT_CODE=%ERRORLEVEL%"
 
 if not "%EXIT_CODE%"=="0" (
     echo.
-    echo 脚本执行失败，错误码：%EXIT_CODE%
-    echo 请查看上方错误信息。
+    echo Script failed. Exit code: %EXIT_CODE%
+    echo Check the error message above.
     pause
 )
 
